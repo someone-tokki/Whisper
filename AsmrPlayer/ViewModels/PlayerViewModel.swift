@@ -503,6 +503,11 @@ final class PlayerViewModel: ObservableObject {
         let matchingVoices = AVSpeechSynthesisVoice.speechVoices()
             .filter { $0.language == language.voiceLanguageCode }
             .sorted { lhs, rhs in
+                let lhsIsFemale = lhs.gender == .female
+                let rhsIsFemale = rhs.gender == .female
+                if lhsIsFemale != rhsIsFemale {
+                    return lhsIsFemale
+                }
                 if lhs.quality.rawValue != rhs.quality.rawValue {
                     return lhs.quality.rawValue > rhs.quality.rawValue
                 }

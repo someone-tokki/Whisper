@@ -18,6 +18,7 @@ struct WhisperApp: App {
                 .environmentObject(player)
                 .environmentObject(settings)
                 .preferredColorScheme(settings.theme.colorScheme)
+                .environment(\.locale, Locale(identifier: settings.appLanguage.localeIdentifier ?? Locale.autoupdatingCurrent.identifier))
         }
     }
 }

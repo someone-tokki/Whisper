@@ -164,10 +164,22 @@ private struct GeneralSettingsView: View {
                 }
             }
 
+            Section("语言") {
+                Picker("应用语言", selection: $settings.appLanguage) {
+                    ForEach(AppLanguage.allCases) { language in
+                        Text(LocalizedStringKey(language.title)).tag(language)
+                    }
+                }
+            }
+
             Section {
                 ForEach(SearchFilter.allCases) { filter in
                     Toggle(isOn: settings.binding(for: filter)) {
-                        Label(filter.title, systemImage: filter.systemImage)
+                        Label {
+                            Text(LocalizedStringKey(filter.title))
+                        } icon: {
+                            Image(systemName: filter.systemImage)
+                        }
                     }
                 }
             } header: {
@@ -227,7 +239,7 @@ private struct SubtitleSettingsView: View {
 
                 Picker("首选字幕语言", selection: $settings.preferredSubtitleLanguage) {
                     ForEach(SubtitleLanguage.allCases) { language in
-                        Text(language.title).tag(language)
+                        Text(LocalizedStringKey(language.title)).tag(language)
                     }
                 }
 
@@ -242,13 +254,13 @@ private struct SubtitleSettingsView: View {
             Section {
                 Picker("字体", selection: $settings.subtitleFont) {
                     ForEach(SubtitleFontFamily.allCases) { font in
-                        Text(font.title).tag(font)
+                        Text(LocalizedStringKey(font.title)).tag(font)
                     }
                 }
 
                 Picker("字体样式", selection: $settings.subtitleFontStyle) {
                     ForEach(SubtitleFontStyle.allCases) { style in
-                        Text(style.title).tag(style)
+                        Text(LocalizedStringKey(style.title)).tag(style)
                     }
                 }
 
@@ -285,7 +297,7 @@ private struct SubtitleSpeechSettingsView: View {
 
                 Picker("语言", selection: $settings.subtitleSpeechLanguage) {
                     ForEach(SubtitleSpeechLanguage.allCases) { language in
-                        Text(language.title).tag(language)
+                        Text(LocalizedStringKey(language.title)).tag(language)
                     }
                 }
             }
@@ -302,13 +314,13 @@ private struct RemoteSettingsView: View {
             Section {
                 Picker("上一首按钮", selection: $settings.remotePreviousAction) {
                     ForEach(RemoteCommandAction.allCases) { action in
-                        Text(action.title).tag(action)
+                        Text(LocalizedStringKey(action.title)).tag(action)
                     }
                 }
 
                 Picker("下一首按钮", selection: $settings.remoteNextAction) {
                     ForEach(RemoteCommandAction.allCases) { action in
-                        Text(action.title).tag(action)
+                        Text(LocalizedStringKey(action.title)).tag(action)
                     }
                 }
             } footer: {
@@ -316,6 +328,45 @@ private struct RemoteSettingsView: View {
             }
         }
         .navigationTitle("遥控")
+    }
+}
+
+private struct AboutSettingsView: View {
+    private let githubURL = URL(string: "https://github.com/someone-tokki/Whisper")!
+
+    var body: some View {
+        List {
+            Section {
+                SettingsInfoRow(icon: "app", title: "版本号", value: appVersion)
+                SettingsInfoRow(icon: "person", title: "作者", value: "someone-tokki")
+                Link(destination: githubURL) {
+                    HStack(spacing: 12) {
+                        Image(systemName: "chevron.left.forwardslash.chevron.right")
+                            .foregroundStyle(.red)
+                            .frame(width: 24)
+
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("GitHub")
+                                .foregroundStyle(.primary)
+                            Text("someone-tokki/Whisper")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+
+                        Spacer()
+
+                        Image(systemName: "arrow.up.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+        }
+        .navigationTitle("关于")
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.1.0"
     }
 }
 
@@ -330,8 +381,8 @@ private struct SettingsNavigationRowContent: View {
                 .foregroundStyle(.red)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                Text(subtitle)
+                Text(LocalizedStringKey(title))
+                Text(LocalizedStringKey(subtitle))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -345,9 +396,9 @@ private struct SettingsValueRow: View {
 
     var body: some View {
         HStack {
-            Text(title)
+            Text(LocalizedStringKey(title))
             Spacer()
-            Text(value)
+            Text(LocalizedStringKey(value))
                 .foregroundStyle(.secondary)
         }
     }
@@ -364,8 +415,8 @@ private struct SettingsInfoRow: View {
                 .foregroundStyle(.red)
                 .frame(width: 24)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
-                Text(value)
+                Text(LocalizedStringKey(title))
+                Text(LocalizedStringKey(value))
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

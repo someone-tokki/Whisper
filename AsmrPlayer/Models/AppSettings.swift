@@ -6,6 +6,7 @@ final class AppSettings: ObservableObject {
     static let shared = AppSettings()
 
     @Published var theme: AppTheme { didSet { save(theme.rawValue, for: Keys.theme) } }
+    @Published var appLanguage: AppLanguage { didSet { save(appLanguage.rawValue, for: Keys.appLanguage) } }
     @Published var searchFilters: Set<SearchFilter> { didSet { save(searchFilters.map(\.rawValue), for: Keys.searchFilters) } }
     @Published var autoHideVideoControls: Bool { didSet { save(autoHideVideoControls, for: Keys.autoHideVideoControls) } }
     @Published var skipForwardSeconds: Double { didSet { save(skipForwardSeconds, for: Keys.skipForwardSeconds) } }
@@ -29,6 +30,7 @@ final class AppSettings: ObservableObject {
     private init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         theme = AppTheme(rawValue: defaults.string(forKey: Keys.theme) ?? "") ?? .system
+        appLanguage = AppLanguage(rawValue: defaults.string(forKey: Keys.appLanguage) ?? "") ?? .system
         let filterValues = defaults.stringArray(forKey: Keys.searchFilters) ?? SearchFilter.defaultSet.map(\.rawValue)
         let filters = Set(filterValues.compactMap(SearchFilter.init(rawValue:)))
         searchFilters = filters.isEmpty ? SearchFilter.defaultSet : filters
@@ -95,6 +97,33 @@ enum AppTheme: String, CaseIterable, Identifiable {
         case .system: nil
         case .light: .light
         case .dark: .dark
+        }
+    }
+}
+
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case simplifiedChinese
+    case english
+    case japanese
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .system: "跟随系统"
+        case .simplifiedChinese: "简体中文"
+        case .english: "English"
+        case .japanese: "日本語"
+        }
+    }
+
+    var localeIdentifier: String? {
+        switch self {
+        case .system: nil
+        case .simplifiedChinese: "zh-Hans"
+        case .english: "en"
+        case .japanese: "ja"
         }
     }
 }
@@ -271,6 +300,7 @@ enum RemoteCommandAction: String, CaseIterable, Identifiable {
 
 private enum Keys {
     static let theme = "settings.theme"
+    static let appLanguage = "settings.appLanguage"
     static let searchFilters = "settings.searchFilters"
     static let autoHideVideoControls = "settings.autoHideVideoControls"
     static let skipForwardSeconds = "settings.skipForwardSeconds"

@@ -89,7 +89,7 @@ struct BottomChromeView: View {
                     VStack(spacing: 3) {
                         Image(systemName: tab.iconName)
                             .font(.title3.weight(.semibold))
-                        Text(tab.title)
+                        Text(LocalizedStringKey(tab.title))
                             .font(.caption2.weight(.semibold))
                     }
                     .foregroundStyle(selectedTab == tab ? Color.red : Color.primary)
