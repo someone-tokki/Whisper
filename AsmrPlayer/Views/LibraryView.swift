@@ -11,9 +11,8 @@ struct LibraryView: View {
     @State private var confirmDeleteSelection = false
     @State private var previewItem: LibraryItem?
     @State private var lastScrollOffset: CGFloat?
-    @State private var accumulatedScrollDelta: CGFloat = 0
-    @State private var lastDragTranslation: CGFloat = 0
     @State private var accumulatedDragDelta: CGFloat = 0
+    @State private var openDeleteRowID: URL?
     private let scrollCoordinateSpaceName = "library-scroll"
 
     var body: some View {
@@ -45,6 +44,7 @@ struct LibraryView: View {
                                         beginSelection: {
                                             library.beginSelection(with: item)
                                         },
+                                        openDeleteRowID: $openDeleteRowID,
                                         delete: {
                                             library.delete(item)
                                         }
@@ -57,8 +57,12 @@ struct LibraryView: View {
                 }
                 .coordinateSpace(name: scrollCoordinateSpaceName)
                 .onPreferenceChange(ChromeScrollOffsetPreferenceKey.self, perform: handleChromeLinkedScroll)
-                .simultaneousGesture(chromeLinkedDragGesture)
                 .background(Color(.systemBackground))
+                .simultaneousGesture(
+                    TapGesture().onEnded {
+                        closeOpenDeleteRow()
+                    }
+                )
                 .navigationTitle(library.directoryTitle)
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
@@ -242,41 +246,10 @@ struct LibraryView: View {
         }
     }
 
-    private var chromeLinkedDragGesture: some Gesture {
-        DragGesture(minimumDistance: 8)
-            .onChanged { value in
-                guard !library.isSelecting else { return }
-                let horizontal = abs(value.translation.width)
-                let vertical = abs(value.translation.height)
-                guard vertical > horizontal * 1.2 else { return }
-
-                let delta = value.translation.height - lastDragTranslation
-                lastDragTranslation = value.translation.height
-                handleChromeDelta(delta)
-            }
-            .onEnded { value in
-                guard !library.isSelecting else {
-                    resetChromeDragTracking()
-                    return
-                }
-                let vertical = value.translation.height
-                let horizontal = value.translation.width
-                let predictedVertical = value.predictedEndTranslation.height
-                if abs(vertical) > abs(horizontal) * 1.2 {
-                    if vertical < -18 || predictedVertical < -42 {
-                        setChromeCompact(true)
-                    } else if vertical > 24 || predictedVertical > 54 {
-                        setChromeCompact(false)
-                    }
-                }
-                resetChromeDragTracking()
-            }
-    }
-
     private func handleChromeLinkedScroll(_ offset: CGFloat) {
         guard !library.isSelecting else {
             lastScrollOffset = offset
-            accumulatedScrollDelta = 0
+            accumulatedDragDelta = 0
             return
         }
 
@@ -301,19 +274,22 @@ struct LibraryView: View {
 
         if accumulatedDragDelta < -18 {
             setChromeCompact(true)
-            resetChromeDragTracking(keepLastTranslation: true)
+            resetChromeDragTracking()
         } else if accumulatedDragDelta > 26 {
             setChromeCompact(false)
-            resetChromeDragTracking(keepLastTranslation: true)
+            resetChromeDragTracking()
         }
     }
 
-    private func resetChromeDragTracking(keepLastTranslation: Bool = false) {
-        if !keepLastTranslation {
-            lastDragTranslation = 0
-        }
+    private func resetChromeDragTracking() {
         accumulatedDragDelta = 0
-        accumulatedScrollDelta = 0
+    }
+
+    private func closeOpenDeleteRow() {
+        guard openDeleteRowID != nil else { return }
+        withAnimation(.snappy(duration: 0.24)) {
+            openDeleteRowID = nil
+        }
     }
 
     private var emptyState: some View {
@@ -333,6 +309,11 @@ struct LibraryView: View {
     }
 
     private func open(_ item: LibraryItem) {
+        if openDeleteRowID != nil {
+            closeOpenDeleteRow()
+            return
+        }
+
         if library.isSelecting {
             library.toggleSelection(item)
             return
@@ -362,24 +343,30 @@ private struct FileManagerRow: View {
     let open: () -> Void
     let toggleSelection: () -> Void
     let beginSelection: () -> Void
+    @Binding var openDeleteRowID: URL?
     let delete: () -> Void
     @State private var horizontalOffset: CGFloat = 0
+
+    private var isDeleteOpen: Bool {
+        openDeleteRowID == item.id
+    }
 
     var body: some View {
         ZStack(alignment: .trailing) {
             if !isSelecting {
                 Button(role: .destructive) {
                     withAnimation(.snappy(duration: 0.24)) {
-                        horizontalOffset = 0
+                        openDeleteRowID = nil
                     }
                     delete()
                 } label: {
-                    Image(systemName: "trash")
-                        .font(.body.weight(.semibold))
-                        .foregroundStyle(.white)
-                        .frame(width: deleteButtonWidth)
-                        .frame(maxHeight: .infinity)
-                        .background(Color.red)
+                    ZStack {
+                        Color.red
+                        Image(systemName: "trash")
+                            .font(.body.weight(.semibold))
+                            .foregroundStyle(.white)
+                    }
+                    .frame(width: deleteButtonWidth)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("删除")
@@ -393,10 +380,18 @@ private struct FileManagerRow: View {
         .clipped()
         .onChange(of: isSelecting) { _, newValue in
             if newValue {
-                horizontalOffset = 0
+                openDeleteRowID = nil
+            }
+        }
+        .onChange(of: openDeleteRowID) { _, newValue in
+            if newValue != item.id {
+                withAnimation(.snappy(duration: 0.22)) {
+                    horizontalOffset = 0
+                }
             }
         }
         .onAppear {
+            horizontalOffset = isDeleteOpen ? -deleteButtonWidth : 0
             VideoMetadataStore.shared.loadIfNeeded(for: item.url)
         }
         .overlay(alignment: .bottom) {
@@ -433,11 +428,12 @@ private struct FileManagerRow: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
+        .frame(minHeight: 70)
         .contentShape(Rectangle())
         .onTapGesture {
-            if horizontalOffset < 0 {
+            if openDeleteRowID != nil {
                 withAnimation(.snappy(duration: 0.24)) {
-                    horizontalOffset = 0
+                    openDeleteRowID = nil
                 }
             } else {
                 open()
@@ -452,7 +448,10 @@ private struct FileManagerRow: View {
                 guard !isSelecting else { return }
                 let horizontal = value.translation.width
                 let vertical = value.translation.height
-                guard abs(horizontal) > abs(vertical) else { return }
+                guard abs(horizontal) > abs(vertical) * 1.35 else { return }
+                if openDeleteRowID != item.id {
+                    openDeleteRowID = item.id
+                }
                 horizontalOffset = min(0, max(-deleteButtonWidth, horizontal))
             }
             .onEnded { value in
@@ -461,6 +460,7 @@ private struct FileManagerRow: View {
                 let predicted = value.predictedEndTranslation.width
                 let shouldOpen = horizontal < -deleteButtonWidth * 0.42 || predicted < -deleteButtonWidth
                 withAnimation(.snappy(duration: 0.26)) {
+                    openDeleteRowID = shouldOpen ? item.id : nil
                     horizontalOffset = shouldOpen ? -deleteButtonWidth : 0
                 }
             }

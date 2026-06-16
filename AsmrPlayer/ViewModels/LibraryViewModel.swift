@@ -35,11 +35,11 @@ final class LibraryViewModel: ObservableObject {
     }
 
     var mediaDirectory: URL {
-        rootDirectory.appendingPathComponent("Media", isDirectory: true)
+        rootDirectory.appendingPathComponent("media", isDirectory: true)
     }
 
     var subtitleDirectory: URL {
-        rootDirectory.appendingPathComponent("Subtitles", isDirectory: true)
+        rootDirectory.appendingPathComponent("subtitle", isDirectory: true)
     }
 
     var canGoBack: Bool {
@@ -111,10 +111,20 @@ final class LibraryViewModel: ObservableObject {
 
     func revealStorageLocation() {
         #if os(iOS)
-        UIApplication.shared.open(rootDirectory) { [weak self] success in
+        guard let filesURL = URL(string: "shareddocuments://") else {
+            errorMessage = "无法打开文件 App，请手动前往“文件 > 我的 iPhone > Whisper”。"
+            return
+        }
+
+        let encodedPath = rootDirectory.path.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? rootDirectory.path
+        let exactFilesURL = URL(string: "shareddocuments://\(encodedPath)")
+        UIApplication.shared.open(exactFilesURL ?? filesURL) { [weak self] success in
             guard !success else { return }
-            Task { @MainActor [weak self] in
-                self?.errorMessage = "无法打开文件 App，请手动前往“文件 > 我的 iPhone > Whisper”。"
+            UIApplication.shared.open(filesURL) { [weak self] fallbackSuccess in
+                guard !fallbackSuccess else { return }
+                Task { @MainActor [weak self] in
+                    self?.errorMessage = "无法打开文件 App，请手动前往“文件 > 我的 iPhone > Whisper”。"
+                }
             }
         }
         #endif
@@ -319,6 +329,15 @@ final class LibraryViewModel: ObservableObject {
 
     private func ensureRootDirectory() throws {
         try fileManager.createDirectory(at: rootDirectory, withIntermediateDirectories: true)
+        try ensureInitialDefaultFoldersIfNeeded()
+    }
+
+    private func ensureInitialDefaultFoldersIfNeeded() throws {
+        let defaults = UserDefaults.standard
+        guard !defaults.bool(forKey: Self.defaultFoldersCreatedKey) else { return }
+        try fileManager.createDirectory(at: mediaDirectory, withIntermediateDirectories: true)
+        try fileManager.createDirectory(at: subtitleDirectory, withIntermediateDirectories: true)
+        defaults.set(true, forKey: Self.defaultFoldersCreatedKey)
     }
 
     private func scan(directory: URL) throws -> [LibraryItem] {
@@ -597,6 +616,8 @@ final class LibraryViewModel: ObservableObject {
     private static func documentsDirectory() -> URL {
         FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
     }
+
+    private static let defaultFoldersCreatedKey = "library.defaultFoldersCreated"
 }
 
 struct LibraryClipboard {
