@@ -30,10 +30,6 @@ struct SettingsView: View {
                         Label("重新读取当前文件夹", systemImage: "arrow.clockwise")
                     }
                 }
-
-                Section("关于") {
-                    SettingsInfoRow(icon: "app", title: "Whisper", value: "0.1.0")
-                }
             }
             .navigationTitle("设置")
             .navigationDestination(for: SettingsRoute.self) { route in
@@ -68,6 +64,8 @@ struct SettingsView: View {
         case .remote:
             RemoteSettingsView()
                 .environmentObject(settings)
+        case .about:
+            AboutSettingsView()
         }
     }
 
@@ -83,10 +81,11 @@ private enum SettingsRoute: Hashable, Identifiable {
     case subtitle
     case subtitleSpeech
     case remote
+    case about
 
     var id: Self { self }
 
-    static let rootRoutes: [SettingsRoute] = [.general, .playback, .subtitle, .remote]
+    static let rootRoutes: [SettingsRoute] = [.general, .playback, .subtitle, .remote, .about]
 
     var icon: String {
         switch self {
@@ -100,6 +99,8 @@ private enum SettingsRoute: Hashable, Identifiable {
             return "speaker.wave.2"
         case .remote:
             return "dot.radiowaves.left.and.right"
+        case .about:
+            return "info.circle"
         }
     }
 
@@ -115,6 +116,8 @@ private enum SettingsRoute: Hashable, Identifiable {
             return "字幕转语音"
         case .remote:
             return "遥控"
+        case .about:
+            return "关于"
         }
     }
 
@@ -130,6 +133,8 @@ private enum SettingsRoute: Hashable, Identifiable {
             return "开关、语速、音量与语言"
         case .remote:
             return "耳机和锁屏控制映射"
+        case .about:
+            return "版本、作者与项目主页"
         }
     }
 }
